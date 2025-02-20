@@ -10,8 +10,9 @@
 TFT_eSPI tft = TFT_eSPI();  // Initialize TFT object
 
 void setup() {
+    delay(5000); 
     Serial.begin(115200);
-    Serial.println("booting up");
+    Serial.println("booting up");    
     startUp();
 }
 

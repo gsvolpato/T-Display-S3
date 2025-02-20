@@ -76,12 +76,11 @@ void displayStartupLogo() {
 }
 
 void startUp() {
-    tft.begin();
     setupGPIOPins();
-    
     if (SPIFFS.begin(true)) {
         loadUserConfig();
     }
+    tft.begin();
     
     displayStartupLogo();
     mainMenu();

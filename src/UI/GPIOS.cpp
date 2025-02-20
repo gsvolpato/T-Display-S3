@@ -1,5 +1,6 @@
 #define DISABLE_ALL_LIBRARY_WARNINGS
 #include <Arduino.h>
+#include <TFT_eSPI.h>
 #include "GPIOS.h"
 #include <SPI.h>
 
@@ -7,13 +8,17 @@ bool rfidActive = false;
 bool nrfActive = false;
 
 void setupGPIOPins() {
-//| Encoder & Power
-    pinMode(PIN_ENCODER_SWITCH, INPUT_PULLUP);
-    pinMode(PIN_WAKEUP_SWITCH, INPUT_PULLUP);
-    pinMode(PIN_ENCODER_CLK, INPUT_PULLUP);
-    pinMode(PIN_ENCODER_DT, INPUT_PULLUP);
+//| Power
     pinMode(PIN_POWER_ON, OUTPUT);
     digitalWrite(PIN_POWER_ON, HIGH);
+
+//| Rotary Encoder
+    pinMode(PIN_ENCODER_CLK, INPUT_PULLUP);
+    pinMode(PIN_ENCODER_DT, INPUT_PULLUP);
+    
+//| Switches
+    pinMode(PIN_ENCODER_SWITCH, INPUT_PULLUP);
+    pinMode(PIN_WAKEUP_SWITCH, INPUT_PULLUP);
 
 //| RF Modules SPI Pins
     pinMode(PIN_RF_MISO, INPUT);
@@ -38,6 +43,10 @@ void setupGPIOPins() {
     pinMode(IRQ_PIN, INPUT);
     pinMode(SS_PIN, OUTPUT);
     digitalWrite(SS_PIN, HIGH);
+
+//| TFT Backlight
+    pinMode(TFT_BL, OUTPUT);
+    digitalWrite(TFT_BL, HIGH);
 }
 
 void deinitRFID() {
