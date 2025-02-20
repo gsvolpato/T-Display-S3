@@ -7,12 +7,12 @@
 #include "UI/StartupSettings.h"
 #include "UI/MenuLists.h"
 
-TFT_eSPI tft = TFT_eSPI();  // Initialize TFT object
+TFT_eSPI tft = TFT_eSPI();
 
 void setup() {
     delay(5000); 
     Serial.begin(115200);
-    Serial.println("booting up");    
+    Serial.println("Booting up");    
     startUp();
 }
 

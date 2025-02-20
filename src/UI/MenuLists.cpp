@@ -33,7 +33,6 @@ const char* mainMenuItems[] = {
     "USB",
     "Tools",
     "Settings",
-    " ",     // Added Back option to maintain menu system consistency
     nullptr
 };
 void handleMainMenuSelection(int selectedOption) {
@@ -49,10 +48,8 @@ void handleMainMenuSelection(int selectedOption) {
             break;
         case 3: // RFID and NFC
             RFIDMenu();
-            //NFCMenu(); // Temporarily disabled until implemented
             break;
         case 4: // nRF24
-            //nRF24Menu(); // Temporarily disabled until implemented
             staticItems();
             tft.setTextDatum(MC_DATUM);
             tft.drawString("nRF24 Menu - Coming soon", SCREEN_WIDTH/2, SCREEN_HEIGHT/2);
@@ -70,15 +67,13 @@ void handleMainMenuSelection(int selectedOption) {
         case 8: // Settings
             SettingsMenu();
             break;
-        case 9: // Back (will do nothing in main menu)
-            // Do nothing since we're in the main menu
-            break;
         default:
             Serial.println("Invalid menu selection");
             break;
     }
 }
 void mainMenu() {
+    Serial.println("mainMenu()");
     Serial.println("Parsed Menu Items:");
     for (int i = 0; mainMenuItems[i] != nullptr; i++) {
         Serial.println(mainMenuItems[i]);
@@ -94,7 +89,6 @@ const char* wifiMenuItems[] = {
     "04- WiFi",
     "05- WiFi",
     "06- WiFi",
-    "07- Back",
     nullptr
 };
 void handleWiFiMenuSelection(int selectedOption) {
@@ -102,7 +96,6 @@ void handleWiFiMenuSelection(int selectedOption) {
 
     switch (selectedOption) {
         case 0:
-            //staticItems();
             wifiScan();
             break;
         case 1:
@@ -153,7 +146,6 @@ const char* BluetoothMenuItems[] = {
     "03- Bluetooth",
     "04- Bluetooth",
     "05- Bluetooth",
-    "Back",
     nullptr
 };
 void handleBluetoothMenuSelection(int selectedOption) {
@@ -189,14 +181,11 @@ void handleBluetoothMenuSelection(int selectedOption) {
     }
 }
 void BluetoothMenu() {
-    // Initialize Bluetooth if not already initialized
     static bool initialized = false;
     if (!initialized) {
         initBluetooth();
         initialized = true;
     }
-
-    // Get current rotation to determine orientation
     uint8_t rotation = tft.getRotation();
     const char* headerText = (rotation == 1 || rotation == 3) ? "Bluetooth" : "BLE";
 
@@ -215,7 +204,6 @@ const char* IRMenuItems[] = {
     "Save",
     "Create Remote",
     "Stored IR",
-    "Back",
     nullptr
 };
 void handleIRMenuSelection(int selectedOption) {
@@ -262,7 +250,6 @@ const char* RFIDMenuItems[] = {
     "Read Dump",
     "Write Dump",
     "Stored IDs",
-    "Back",
     nullptr
 };
 void handleRFIDMenuSelection(int selectedOption) {
@@ -332,7 +319,6 @@ const char* nRF24MenuItems[] = {
     "03- Receive",
     "04- Clone",
     "05- Sniff",
-    "06- Back",
     nullptr // Null-terminated to count items
 };
 void handlenRF24MenuSelection(int selectedOption) {
@@ -397,7 +383,6 @@ const char* SubGhzMenuItems[] = {
     "04- SubGhz",
     "05- SubGhz",
     "06- SubGhz",
-    "07- Back",
     nullptr
 };
 void handleSubGhzMenuSelection(int selectedOption) {
@@ -458,7 +443,6 @@ const char* usbMenuItems[] = {
     "04- USB",
     "05- USB",
     "06- USB",
-    "07- Back",
     nullptr
 };
 void handleUSBMenuSelection(int selectedOption) {
@@ -518,7 +502,6 @@ const char* ToolsMenuItems[] = {
     "03- Tools",
     "04- Tools",
     "05- Tools",
-    "06- Back",
     nullptr
 };
 void handleToolsMenuSelection(int selectedOption) {
@@ -568,70 +551,47 @@ void ToolsMenu() {
 
 //| 9 - SETTINGS MENU ##########################################################
 const char* settingsMenuItems[] = {
-    "Restart",
-    "Turn Off", 
-    "UI Color",
-    "Orientation",
-    "Clock",
-    "Startup Logo",
-    "Startup WiFi",
+    "Display",
+    "UI Colors",
+    "Rotation",
+    "Brightness",
+    "Power",
+    "Storage",
     "Sound",
     "About",
-    "Back",
-    nullptr // Null-terminated to count items
+    nullptr  // Terminator
 };
 void handleSettingsMenuSelection(int selectedOption) {
-    
-    tft.setTextDatum(MC_DATUM);
-
-    switch (selectedOption) {
-        case 0: // Restart
-            restartDevice();
+    switch(selectedOption) {
+        case 0: // Display
+            // Display handling code
             break;
-        case 1: // Turn Off
-            turnOffDevice();
-            break;
-        case 2: // UI Color
+        case 1: // UI Colors
             uiColorMenu();
             break;
-        case 3: // Orientation
-            orientationMenu();
+        case 2: // Rotation
+            // Rotation handling code
             break;
-        case 4: // Clock
-            staticItems();
-            tft.drawString("Clock selected", SCREEN_WIDTH/2, SCREEN_HEIGHT / 2);
-            Serial.println("Clock selected");
+        case 3: // Brightness
+            // Brightness handling code
             break;
-        case 5: // Startup Logo
-            displayStartupLogo();
-            backOption();
+        case 4: // Power
+            // Power handling code
             break;
-        case 6: // Startup WiFi
-            staticItems();
-            tft.drawString("Startup WiFi selected", SCREEN_WIDTH/2, SCREEN_HEIGHT / 2);
-            Serial.println("Startup WiFi selected");
-            delay(1000);
+        case 5: // Storage
+            // Storage handling code
             break;
-            backOption();
-        case 7: // Sound
+        case 6: // Sound
             staticItems();
             tft.drawString("Sound selected", SCREEN_WIDTH/2, SCREEN_HEIGHT / 2);
             Serial.println("Sound selected");
             delay(1000);
-            backOption();
             break;
-        case 8: // About
+        case 7: // About
             AboutMenu();
             break;
-        case 9: // Back
-            backOption();
-            break;
         default:
-            staticItems();
-            tft.drawString("Invalid settings menu selection", SCREEN_WIDTH/2, SCREEN_HEIGHT / 2);
             Serial.println("Invalid settings menu selection");
-            delay(1000);
-            backOption();
             break;
     }
 }

@@ -1,3 +1,4 @@
+#define DISABLE_ALL_LIBRARY_WARNINGS
 #ifndef GPIOS_H
 #define GPIOS_H
 

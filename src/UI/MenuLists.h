@@ -1,6 +1,6 @@
-#define DISABLE_ALL_LIBRARY_WARNINGS
 #ifndef MENULISTS_H
 #define MENULISTS_H
+#define DISABLE_ALL_LIBRARY_WARNINGS
 #include <TFT_eSPI.h>
 #include "DisplayConfig.h"
 #include "UISettings.h"
