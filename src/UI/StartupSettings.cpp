@@ -5,10 +5,9 @@
 #include "StartupSettings.h"
 #include "UISettings.h"
 #include "DisplayConfig.h"
-#include "MainMenu.h"
 #include "GPIOS.h"
-#include "../Settings/SettingsSettings.h"
 #include "images.h"
+#include "MenuLists.h"
 
 extern TFT_eSPI tft;
 

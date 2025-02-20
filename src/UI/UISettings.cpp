@@ -1,10 +1,9 @@
 #define DISABLE_ALL_LIBRARY_WARNINGS
 
 #include <Arduino.h>
-#include "UISettings.h"
-
 #include <TFT_eSPI.h>
-#include "../Settings/SettingsSettings.h"
+
+#include "UISettings.h"
 
 // FONTS
 #include "../UI/fonts/OpenSans_Bold10pt7b.h"
@@ -14,24 +13,14 @@
 #include "images.h"
 
 // config files
-#include "MainMenu.h"
 #include "GPIOS.h"
 #include "DisplayConfig.h"
 #include "StartupSettings.h"
 
 // MENU FILES
-#include "../WiFi/WiFiMenu.h"
-#include "../Bluetooth/BluetoothMenu.h"
-#include "../IR/IRMenu.h"
-#include "../RFID_NFC/RFID_NFC_Menu.h"
-//#include "../NFC/NFCMenu.h" // To be implemented
-//#include "../nRF24/nRF24Menu.h" // To be implemented
-#include "../SubGhz/SubGhzMenu.h"
-#include "../USB/USBMenu.h"
-#include "../Tools/ToolsMenu.h"
-#include "../Settings/SettingsMenu.h"
+#include "MenuLists.h"
 #include "../About/AboutMenu.h"
-
+#include "../Settings/SettingsSettings.h"
 
 extern TFT_eSPI tft;
 
