@@ -97,10 +97,6 @@ void IRAM_ATTR handleButton() {
 }
 
 void setupEncoder() {
-    pinMode(PIN_ENCODER_CLK, INPUT_PULLUP);
-    pinMode(PIN_ENCODER_DT, INPUT_PULLUP);
-    pinMode(PIN_ENCODER_SWITCH, INPUT_PULLUP);
-    
     detachInterrupt(digitalPinToInterrupt(PIN_ENCODER_CLK));
     detachInterrupt(digitalPinToInterrupt(PIN_ENCODER_DT));
     detachInterrupt(digitalPinToInterrupt(PIN_ENCODER_SWITCH));
@@ -271,15 +267,11 @@ void userInterface(const char* menuName, const char** items, void (*selectionHan
     staticItems();
     setupEncoder();
 
-
-    
-
     int totalItems = countMenuItems(items);
     static bool buttonPressed = false;
     unsigned long lastTempUpdate = 0;
     const unsigned long TEMP_UPDATE_INTERVAL = 1000; // Update temperature every 1 second
 
-    
     int startIdx = currentPage * getItemsPerPage();
     int endIdx = min(startIdx + getItemsPerPage(), totalItems);
     
@@ -308,6 +300,23 @@ void userInterface(const char* menuName, const char** items, void (*selectionHan
     staticItemsDrawn = true;
 
     while (true) {
+        // Check wakeup switch for back functionality
+        static bool wakeupPressed = false;
+        int wakeupState = digitalRead(PIN_WAKEUP_SWITCH);
+        
+        if (wakeupState == LOW && !wakeupPressed) {
+            wakeupPressed = true;
+            Serial.println("Wakeup switch pressed");
+            delay(50); // Simple debounce
+        }
+        else if (wakeupState == HIGH && wakeupPressed) {
+            wakeupPressed = false;
+            Serial.println("Wakeup switch released");
+            delay(50); // Simple debounce
+            backOption();
+            return; // Exit the current menu
+        }
+
         unsigned long currentMillis = millis();
         
         // Update temperature every TEMP_UPDATE_INTERVAL
@@ -369,7 +378,8 @@ void userInterface(const char* menuName, const char** items, void (*selectionHan
             
             currentPage = selectedMenuItem / getItemsPerPage();
             staticItemsDrawn = false;
-            Serial.println("Selection: " + String(selectedMenuItem));
+            // Print the actual menu item name instead of just the index
+            Serial.println("Selection: " + String(items[selectedMenuItem]));
         }
 
         // Modified button handling for faster response
@@ -377,18 +387,16 @@ void userInterface(const char* menuName, const char** items, void (*selectionHan
         
         if (buttonState == LOW && !buttonPressed) {
             buttonPressed = true;
+            Serial.println("Encoder switch pressed");
             delayMicroseconds(10000); // 10ms debounce using microseconds
         } 
         else if (buttonState == HIGH && buttonPressed) {
             buttonPressed = false;
+            Serial.println("Encoder switch released");
             delayMicroseconds(10000); // 10ms debounce using microseconds
             
-            if (selectedMenuItem == totalItems - 1) {
-                backOption();
-                return;
-            } else {
-                selectionHandler(selectedMenuItem);
-            }
+            // Remove the check for last item, just call the selection handler
+            selectionHandler(selectedMenuItem);
         }
 
         if (!staticItemsDrawn) {

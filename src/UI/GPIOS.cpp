@@ -9,6 +9,7 @@ bool nrfActive = false;
 
 void setupGPIOPins() {
     Serial.println("setupGPIOPins()");
+    gpio_install_isr_service(0);
 //| Power
     pinMode(PIN_POWER_ON, OUTPUT);
     digitalWrite(PIN_POWER_ON, HIGH);

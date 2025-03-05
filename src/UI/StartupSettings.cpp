@@ -48,10 +48,12 @@ void displayStartupLogo() {
     int logoWidth, logoHeight;
     
     if (rotation == 1 || rotation == 3) {
+        Serial.println("Landscape");
         currentLogo = skull_170x320_Landscape;
         logoWidth = 320;
         logoHeight = 170;
     } else {
+        Serial.println("Portrait");
         currentLogo = skull_170x320_portrait;
         logoWidth = 170;
         logoHeight = 320;
@@ -76,6 +78,7 @@ void displayStartupLogo() {
 
 void startUp() {
     Serial.println("startUp()");
+
     setupGPIOPins();
     if (SPIFFS.begin(true)) {
         loadUserConfig();
