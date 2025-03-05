@@ -2,17 +2,9 @@
 #include <TFT_eSPI.h>
 #include <SPI.h>
 #include <MFRC522.h>
-#include "skull_logo_s3.h"  // Include the background image
+#include "skull_logo_s3.h"
+#include "GPIOS.h"
 
-// Pin definitions
-#define PIN_POWER_ON 15
-#define PIN_RFID_RST 18
-#define PIN_RFID_SDA 21  // SDA = SS pin
-#define PIN_RFID_MISO 13 // Changed from 10
-#define PIN_RFID_MOSI 11 // Changed from 3
-#define PIN_RFID_SCK 12  // Changed from 43
-
-// Screen dimensions
 #define SCREEN_WIDTH  320
 #define SCREEN_HEIGHT 170
 
@@ -20,8 +12,69 @@ TFT_eSPI tft = TFT_eSPI();
 MFRC522 rfid(PIN_RFID_SDA, PIN_RFID_RST);
 
 unsigned long lastCardTime = 0;
-const unsigned long DISPLAY_TIMEOUT = 10000; // 10 seconds timeout
+const unsigned long DISPLAY_TIMEOUT = 10000;
 bool showingCard = false;
+
+const char* RFIDMenuItems[] = {
+    "Read ID",
+    "Clone Tag", 
+    "Format ID",
+    "Read Dump",
+    "Write Dump",
+    "Stored IDs"
+};
+const int NUM_MENU_ITEMS = sizeof(RFIDMenuItems) / sizeof(RFIDMenuItems[0]);
+int selectedMenuItem = 0;
+
+
+volatile int encoderPos = 0;
+volatile bool encoderChanged = false;
+
+bool inSubMenu = false;
+volatile bool encoderSwitchPressed = false;
+volatile bool wakeupSwitchPressed = false;
+
+void IRAM_ATTR handleEncoder() {
+    static uint8_t old_AB = 3;  
+    static int8_t encval = 0;
+    static const int8_t enc_states[] = {0,-1,1,0,1,0,0,-1,-1,0,0,1,0,1,-1,0};
+    
+    old_AB <<= 2;
+    old_AB |= (digitalRead(PIN_ENCODER_CLK) << 1) | digitalRead(PIN_ENCODER_DT);
+    encval += enc_states[old_AB & 0x0f];
+
+    // 4 steps = 1 detent
+    if (encval > 3) {        // Clockwise
+        encoderPos++;
+        encval = 0;
+        encoderChanged = true;
+    }
+    else if (encval < -3) {  // Counter-clockwise
+        encoderPos--;
+        encval = 0;
+        encoderChanged = true;
+    }
+}
+
+void IRAM_ATTR handleEncoderSwitch() {
+    static unsigned long lastDebounceTime = 0;
+    unsigned long currentTime = millis();
+    
+    if (currentTime - lastDebounceTime > 50) {  // 50ms debounce
+        encoderSwitchPressed = true;
+        lastDebounceTime = currentTime;
+    }
+}
+
+void IRAM_ATTR handleWakeupSwitch() {
+    static unsigned long lastDebounceTime = 0;
+    unsigned long currentTime = millis();
+    
+    if (currentTime - lastDebounceTime > 50) {  // 50ms debounce
+        wakeupSwitchPressed = true;
+        lastDebounceTime = currentTime;
+    }
+}
 
 void dump_byte_array(byte *buffer, byte bufferSize) {
     for (byte i = 0; i < bufferSize; i++) {
@@ -57,7 +110,7 @@ void readRFIDBlocks() {
     status = rfid.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, trailerBlock, &key, &(rfid.uid));
     if (status != MFRC522::STATUS_OK) {
         Serial.print(F("PCD_Authenticate() failed: "));
-        Serial.println(rfid.GetStatusCodeName(status));
+        Serial.println(rfid.GetStatusCodeName((MFRC522::StatusCode)status));
         return;
     }
 
@@ -70,7 +123,7 @@ void readRFIDBlocks() {
         status = rfid.MIFARE_Read(blockAddr, buffer, &size);
         if (status != MFRC522::STATUS_OK) {
             Serial.print(F("MIFARE_Read() failed: "));
-            Serial.println(rfid.GetStatusCodeName(status));
+            Serial.println(rfid.GetStatusCodeName((MFRC522::StatusCode)status));
             continue;
         }
 
@@ -135,6 +188,99 @@ String getCardType(MFRC522::PICC_Type piccType) {
 void displayWelcomeMessage() {
     showingCard = false;
     tft.pushImage(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, skull_logo_s3);
+    delay(3000);
+}
+
+void displayMenu() {
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setTextSize(2);
+    
+    for (int i = 0; i < NUM_MENU_ITEMS; i++) {
+        if (i == selectedMenuItem) {
+            tft.setTextColor(TFT_GREEN, TFT_BLACK);
+        } else {
+            tft.setTextColor(TFT_WHITE, TFT_BLACK);
+        }
+        tft.setCursor(10, 20 + i * 25);
+        tft.println(RFIDMenuItems[i]);
+    }
+}
+
+void handleRFIDMenuSelection(int selectedOption) {
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextColor(TFT_GREEN, TFT_BLACK);
+    tft.setTextSize(2);
+    tft.setTextDatum(MC_DATUM);
+    int textX = SCREEN_WIDTH/2;
+    int textY = SCREEN_HEIGHT/2;
+
+    inSubMenu = true;
+
+    switch (selectedOption) {
+        case 0: // Read ID
+            while (inSubMenu) {
+                tft.fillScreen(TFT_BLACK);
+                tft.drawString("Scanning for card...", textX, textY);
+                
+                // Check for card
+                if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
+                    readRFIDBlocks();
+                    delay(2000);  // Show results for 2 seconds
+                }
+                
+                // Check for return button
+                if (wakeupSwitchPressed) {
+                    while(digitalRead(PIN_WAKEUP_SWITCH) == LOW);  // Wait for release
+                    wakeupSwitchPressed = false;
+                    inSubMenu = false;
+                }
+                
+                delay(100);  // Small delay between scans
+            }
+            break;
+            
+        case 1: // Clone Tag
+            tft.drawString("Clone Tag Mode", textX, textY);
+            tft.drawString("Press WAKE to return", textX, textY + 30);
+            while (inSubMenu) {
+                if (wakeupSwitchPressed) {
+                    while(digitalRead(PIN_WAKEUP_SWITCH) == LOW);  // Wait for release
+                    wakeupSwitchPressed = false;
+                    inSubMenu = false;
+                }
+                delay(100);
+            }
+            break;
+            
+        case 2: // Format ID
+            tft.drawString("Format - Coming soon", textX, textY);
+            delay(2000);
+            break;
+            
+        case 3: // Read Dump
+            tft.drawString("Read Dump - Coming soon", textX, textY);
+            delay(2000);
+            break;
+            
+        case 4: // Write Dump
+            tft.drawString("Write Dump - Coming soon", textX, textY);
+            delay(2000);
+            break;
+            
+        case 5: // Stored IDs
+            tft.drawString("Stored IDs - Coming soon", textX, textY);
+            delay(2000);
+            break;
+            
+        default:
+            tft.drawString("Invalid selection", textX, textY);
+            delay(2000);
+            inSubMenu = false;
+            break;
+    }
+    
+    displayMenu();
 }
 
 void setup() {
@@ -171,41 +317,45 @@ void setup() {
     rfid.PCD_SetAntennaGain(rfid.RxGain_max); // Set maximum antenna gain
     
     Serial.println(F("RFID Reader initialized successfully."));
-    Serial.println(F("Scan a card to begin..."));
     
     // Display welcome message
     displayWelcomeMessage();
+    
+    displayMenu();
+    
+    // Setup encoder pins
+    pinMode(PIN_ENCODER_CLK, INPUT_PULLUP);
+    pinMode(PIN_ENCODER_DT, INPUT_PULLUP);
+    pinMode(PIN_ENCODER_SWITCH, INPUT_PULLUP);
+    
+    // Setup switches
+    pinMode(PIN_WAKEUP_SWITCH, INPUT_PULLUP);
+    
+    // Attach interrupts for encoder
+    attachInterrupt(digitalPinToInterrupt(PIN_ENCODER_CLK), handleEncoder, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(PIN_ENCODER_DT), handleEncoder, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(PIN_ENCODER_SWITCH), handleEncoderSwitch, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PIN_WAKEUP_SWITCH), handleWakeupSwitch, FALLING);
 }
 
 void loop() {
-    // Check if we need to return to welcome screen after timeout
-    if (showingCard && (millis() - lastCardTime > DISPLAY_TIMEOUT)) {
-        displayWelcomeMessage();
-    }
-    
-    // Check for new cards
-    if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
-        delay(50);
-        return;
-    }
-    
-    // Get card UID
-    String uid = "";
-    for (byte i = 0; i < rfid.uid.size; i++) {
-        uid += (rfid.uid.uidByte[i] < 0x10 ? "0" : "");
-        uid += String(rfid.uid.uidByte[i], HEX);
-        if (i < rfid.uid.size - 1) {
-            uid += ":";
+    // Handle encoder switch release
+    if (encoderSwitchPressed && digitalRead(PIN_ENCODER_SWITCH) == HIGH) {  // Switch released
+        encoderSwitchPressed = false;
+        if (!inSubMenu) {  // Only handle menu selection if not in submenu
+            handleRFIDMenuSelection(selectedMenuItem);
         }
     }
-    uid.toUpperCase();
     
-    // Get card type
-    String type = getCardType(rfid.PICC_GetType(rfid.uid.sak));
+    // Handle menu navigation only when not in submenu
+    if (!inSubMenu && encoderChanged) {
+        selectedMenuItem = encoderPos % NUM_MENU_ITEMS;
+        if (selectedMenuItem < 0) {
+            selectedMenuItem += NUM_MENU_ITEMS;
+        }
+        displayMenu();
+        encoderChanged = false;
+    }
     
-    // Display card information on screen
-    displayCardInfo(uid, type);
-    
-    // Read and display all blocks
-    readRFIDBlocks();
+    delay(1);  // Small delay to prevent CPU hogging
 }
