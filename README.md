@@ -1,7 +1,4 @@
-# T-Display-S3
-LilyGo T-Display-S3 Projects. Each branch a different project.
-
-## Wireless Swiss Army Knife
+# Wireless Swiss Army Knife
 Flipper Zero inspired project using the LilyGo T-Display S3 board and some modules for RF, IR, and RFID/NFC capabilities.
 
 ## Hardware Requirements
