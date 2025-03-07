@@ -9,6 +9,16 @@
 #define SCREEN_WIDTH  320
 #define SCREEN_HEIGHT 170
 
+struct SectorData {
+    byte data[16];
+    bool isValid;
+};
+
+void displaySector(int sector);
+bool readAllSectors();
+String byteArrayToHexString(byte *buffer, byte bufferSize);
+bool storeCardData(MFRC522::Uid uid, SectorData *sectors);
+
 TFT_eSPI tft = TFT_eSPI();
 MFRC522 rfid(PIN_RFID_SDA, PIN_RFID_RST);
 
@@ -35,14 +45,11 @@ bool inSubMenu = false;
 volatile bool encoderSwitchPressed = false;
 volatile bool wakeupSwitchPressed = false;
 
-struct SectorData {
-    byte data[16];
-    bool isValid;
-};
-
 SectorData sectorBuffer[16];
 int currentSector = 0;
 bool dumpLoaded = false;
+
+//| ENCODER AND WAKEUP SWITCH ------------------------------------------------------------------------------------------------------|
 
 void IRAM_ATTR handleEncoder() {
     static uint8_t old_AB = 3;  
@@ -86,12 +93,7 @@ void IRAM_ATTR handleWakeupSwitch() {
     }
 }
 
-void dump_byte_array(byte *buffer, byte bufferSize) {
-    for (byte i = 0; i < bufferSize; i++) {
-        Serial.print(buffer[i] < 0x10 ? " 0" : " ");
-        Serial.print(buffer[i], HEX);
-    }
-}
+//| READ RFID BLOCKS ------------------------------------------------------------------------------------------------------|
 
 void readRFIDBlocks() {
     MFRC522::MIFARE_Key key;
@@ -127,12 +129,14 @@ void readRFIDBlocks() {
     for (byte blockAddr = sector * 4; blockAddr < (sector * 4 + 3); blockAddr++) {
         byte buffer[18];
         byte size = sizeof(buffer);
+
+        delay(50);
         
-        if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
+        if (!rfid.PICC_IsNewCardPresent()) {
             Serial.println(F("Card was removed during reading"));
             break;
         }
-        
+
         status = rfid.MIFARE_Read(blockAddr, buffer, &size);
         if (status != MFRC522::STATUS_OK) {
             Serial.print(F("Block ")); 
@@ -150,12 +154,12 @@ void readRFIDBlocks() {
             Serial.print(buffer[i], HEX);
         }
         Serial.println();
-        delay(10);
+        delay(50);
     }
 
     rfid.PICC_HaltA();
     rfid.PCD_StopCrypto1();
-    delay(50);
+    delay(100);
     rfid.PCD_Init();
 }
 
@@ -217,23 +221,12 @@ void displayCardInfo(MFRC522::Uid uid, MFRC522::PICC_Type piccType) {
     lastCardTime = millis();
 }
 
-String getCardType(MFRC522::PICC_Type piccType) {
-    switch (piccType) {
-        case MFRC522::PICC_TYPE_MIFARE_MINI:  return "MIFARE Mini";
-        case MFRC522::PICC_TYPE_MIFARE_1K:    return "MIFARE 1K";
-        case MFRC522::PICC_TYPE_MIFARE_4K:    return "MIFARE 4K";
-        case MFRC522::PICC_TYPE_MIFARE_UL:    return "MIFARE Ultralight";
-        case MFRC522::PICC_TYPE_ISO_14443_4:  return "ISO 14443-4";
-        case MFRC522::PICC_TYPE_ISO_18092:    return "ISO 18092";
-        default:                               return "Unknown";
-    }
-}
-
 void displayWelcomeMessage() {
     showingCard = false;
     tft.pushImage(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, skull_logo_s3);
     delay(3000);
 }
+//| MENU ------------------------------------------------------------------------------------------------------|
 
 void displayMenu() {
     tft.fillScreen(TFT_BLACK);
@@ -251,116 +244,6 @@ void displayMenu() {
     }
 }
 
-void displaySector(int sector) {
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextSize(2);
-    
-    tft.setTextColor(TFT_GREEN, TFT_BLACK);
-    tft.setCursor(10, 10);
-    tft.print("Sector ");
-    tft.print(sector);
-    tft.print(" of 15");
-    
-    if (!sectorBuffer[sector].isValid) {
-        tft.setTextColor(TFT_RED, TFT_BLACK);
-        tft.setCursor(10, 80);
-        tft.print("Read Error");
-        return;
-    }
-    
-    for (int row = 0; row < 2; row++) {
-        tft.setTextColor(TFT_WHITE, TFT_BLACK);
-        tft.setCursor(10, 50 + row * 40);
-        
-        for (int col = 0; col < 8; col++) {
-            byte value = sectorBuffer[sector].data[row * 8 + col];
-            if (value < 0x10) tft.print("0");
-            tft.print(value, HEX);
-            tft.print(" ");
-        }
-    }
-    
-    tft.setTextColor(TFT_CYAN, TFT_BLACK);
-    tft.setCursor(10, SCREEN_HEIGHT - 30);
-    tft.print("Turn: Change Sector");
-}
-
-bool readAllSectors() {
-    MFRC522::MIFARE_Key key;
-    for (byte i = 0; i < 6; i++) key.keyByte[i] = 0xFF;
-    
-    if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
-        return false;
-    }
-    
-    for (int sector = 0; sector < 16; sector++) {
-        sectorBuffer[sector].isValid = false;
-        byte trailerBlock = sector * 4 + 3;
-        
-        if (rfid.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, trailerBlock, &key, &(rfid.uid)) != MFRC522::STATUS_OK) {
-            continue;
-        }
-        
-        bool sectorValid = true;
-        for (byte block = 0; block < 3; block++) {
-            byte blockAddr = sector * 4 + block;
-            byte buffer[18];
-            byte size = sizeof(buffer);
-            
-            if (rfid.MIFARE_Read(blockAddr, buffer, &size) != MFRC522::STATUS_OK) {
-                sectorValid = false;
-                break;
-            }
-            
-            memcpy(sectorBuffer[sector].data + (block * 16/3), buffer, 16/3);
-            delay(10);
-        }
-        
-        sectorBuffer[sector].isValid = sectorValid;
-    }
-    
-    rfid.PICC_HaltA();
-    rfid.PCD_StopCrypto1();
-    return true;
-}
-
-String byteArrayToHexString(byte *buffer, byte bufferSize) {
-    String hex = "";
-    for (byte i = 0; i < bufferSize; i++) {
-        if (buffer[i] < 0x10) hex += "0";
-        hex += String(buffer[i], HEX);
-    }
-    return hex;
-}
-
-bool storeCardData(MFRC522::Uid uid, SectorData *sectors) {
-    if (!SPIFFS.begin(true)) {
-        Serial.println("SPIFFS Mount Failed");
-        return false;
-    }
-
-    String filename = "/" + byteArrayToHexString(uid.uidByte, uid.size) + ".dump";
-    fs::File file = SPIFFS.open(filename, "w");
-    if (!file) {
-        Serial.println("Failed to open file for writing");
-        return false;
-    }
-
-    file.write(uid.uidByte, uid.size);
-    file.write(&uid.sak, 1);
-    
-    for (int sector = 0; sector < 16; sector++) {
-        if (sectors[sector].isValid) {
-            file.write(sectors[sector].data, 16);
-        } else {
-            byte empty[16] = {0};
-            file.write(empty, 16);
-        }
-    }
-    
-    file.close();
-    return true;
-}
 
 void handleRFIDMenuSelection(int selectedOption) {
     tft.fillScreen(TFT_BLACK);
@@ -492,6 +375,124 @@ void handleRFIDMenuSelection(int selectedOption) {
     
     displayMenu();
 }
+
+//| SECTORS ------------------------------------------------------------------------------------------------------|
+
+void displaySector(int sector) {
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextSize(2);
+    
+    tft.setTextColor(TFT_GREEN, TFT_BLACK);
+    tft.setCursor(10, 10);
+    tft.print("Sector ");
+    tft.print(sector);
+    tft.print(" of 15");
+    
+    if (!sectorBuffer[sector].isValid) {
+        tft.setTextColor(TFT_RED, TFT_BLACK);
+        tft.setCursor(10, 80);
+        tft.print("Read Error");
+        return;
+    }
+    
+    for (int row = 0; row < 2; row++) {
+        tft.setTextColor(TFT_WHITE, TFT_BLACK);
+        tft.setCursor(10, 50 + row * 40);
+        
+        for (int col = 0; col < 8; col++) {
+            byte value = sectorBuffer[sector].data[row * 8 + col];
+            if (value < 0x10) tft.print("0");
+            tft.print(value, HEX);
+            tft.print(" ");
+        }
+    }
+    
+    tft.setTextColor(TFT_CYAN, TFT_BLACK);
+    tft.setCursor(10, SCREEN_HEIGHT - 30);
+    tft.print("Turn: Change Sector");
+}
+
+bool readAllSectors() {
+    MFRC522::MIFARE_Key key;
+    for (byte i = 0; i < 6; i++) key.keyByte[i] = 0xFF;
+    
+    if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
+        return false;
+    }
+    
+    for (int sector = 0; sector < 16; sector++) {
+        sectorBuffer[sector].isValid = false;
+        byte trailerBlock = sector * 4 + 3;
+        
+        if (rfid.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, trailerBlock, &key, &(rfid.uid)) != MFRC522::STATUS_OK) {
+            continue;
+        }
+        
+        bool sectorValid = true;
+        for (byte block = 0; block < 3; block++) {
+            byte blockAddr = sector * 4 + block;
+            byte buffer[18];
+            byte size = sizeof(buffer);
+            
+            if (rfid.MIFARE_Read(blockAddr, buffer, &size) != MFRC522::STATUS_OK) {
+                sectorValid = false;
+                break;
+            }
+            
+            memcpy(sectorBuffer[sector].data + (block * 16/3), buffer, 16/3);
+            delay(10);
+        }
+        
+        sectorBuffer[sector].isValid = sectorValid;
+    }
+    
+    rfid.PICC_HaltA();
+    rfid.PCD_StopCrypto1();
+    return true;
+}
+
+String byteArrayToHexString(byte *buffer, byte bufferSize) {
+    String hex = "";
+    for (byte i = 0; i < bufferSize; i++) {
+        if (buffer[i] < 0x10) hex += "0";
+        hex += String(buffer[i], HEX);
+    }
+    return hex;
+}
+
+//| CARD DATA STORAGE ------------------------------------------------------------------------------------------------------|
+
+bool storeCardData(MFRC522::Uid uid, SectorData *sectors) {
+    if (!SPIFFS.begin(true)) {
+        Serial.println("SPIFFS Mount Failed");
+        return false;
+    }
+
+    String filename = "/" + byteArrayToHexString(uid.uidByte, uid.size) + ".dump";
+    fs::File file = SPIFFS.open(filename, "w");
+    if (!file) {
+        Serial.println("Failed to open file for writing");
+        return false;
+    }
+
+    file.write(uid.uidByte, uid.size);
+    file.write(&uid.sak, 1);
+    
+    for (int sector = 0; sector < 16; sector++) {
+        if (sectors[sector].isValid) {
+            file.write(sectors[sector].data, 16);
+        } else {
+            byte empty[16] = {0};
+            file.write(empty, 16);
+        }
+    }
+    
+    file.close();
+    return true;
+}
+
+
+//| SETUP AND LOOP ------------------------------------------------------------------------------------------------------|
 
 void setup() {
     Serial.begin(115200);
