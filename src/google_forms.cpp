@@ -71,12 +71,12 @@ bool GoogleFormsHandler::sendCardData(String uid, String cardType) {
     
     String timestamp = String(millis());
     
-    googleForm.setFormURL(formURL);
-    googleForm.addField(uidFieldName, uid);
-    googleForm.addField(typeFieldName, cardType);
-    googleForm.addField(timestampFieldName, timestamp);
+    googleForm.setFormUrl(formURL);
+    googleForm.addData(uid, uidFieldName);
+    googleForm.addData(cardType, typeFieldName);
+    googleForm.addData(timestamp, timestampFieldName);
     
-    if (googleForm.submitForm()) {
+    if (googleForm.send()) {
         Serial.println("Data sent to Google Form successfully!");
         return true;
     } else {
