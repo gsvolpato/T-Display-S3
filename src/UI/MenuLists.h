@@ -1,3 +1,5 @@
+
+
 #ifndef MENULISTS_H
 #define MENULISTS_H
 #define DISABLE_ALL_LIBRARY_WARNINGS
@@ -49,7 +51,12 @@ extern const char* ToolsMenuItems[];
 void handleToolsMenuSelection(int selectedOption);
 void ToolsMenu();
 
-//| 9 - SETTINGS MENU ##########################################################
+//| 9 - GAMES MENU ##########################################################
+extern const char* GamesMenuItems[];
+void handleGamesMenuSelection(int selectedOption);
+void GamesMenu();
+
+//| 10 - SETTINGS MENU ##########################################################
 void SettingsMenu();
 
 #endif // MENULISTS_H

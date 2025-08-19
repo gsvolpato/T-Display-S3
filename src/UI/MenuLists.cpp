@@ -20,6 +20,7 @@ extern TFT_eSPI tft;
 #include "../SubGhz/SubGhzSettings.h"
 #include "../USB/USBSettings.h"
 #include "../Tools/ToolsSettings.h"
+#include "../Games/GamesSettings.h"
 #include "../Settings/SettingsSettings.h"
 
 //| MAIN MENU ###############################################################
@@ -32,6 +33,7 @@ const char* mainMenuItems[] = {
     "SubGhz",
     "USB",
     "Tools",
+    "Games",
     "Settings",
     nullptr
 };
@@ -64,7 +66,10 @@ void handleMainMenuSelection(int selectedOption) {
         case 7: // Tools
             ToolsMenu();
             break;
-        case 8: // Settings
+        case 8: // Games
+            GamesMenu();
+            break;
+        case 9: // Settings
             SettingsMenu();
             break;
         default:
@@ -549,7 +554,9 @@ void ToolsMenu() {
     userInterface("Tools", ToolsMenuItems, handleToolsMenuSelection);
 }
 
-//| 9 - SETTINGS MENU ##########################################################
+
+
+//| 10 - SETTINGS MENU ##########################################################
 const char* settingsMenuItems[] = {
     "Display",
     "UI Colors",
@@ -564,25 +571,42 @@ const char* settingsMenuItems[] = {
 void handleSettingsMenuSelection(int selectedOption) {
     switch(selectedOption) {
         case 0: // Display
-            // Display handling code
+            staticItems();
+            tft.setTextDatum(MC_DATUM);
+            tft.drawString("Display settings", SCREEN_WIDTH/2, SCREEN_HEIGHT/2);
+            Serial.println("Display selected");
+            delay(1000);
             break;
         case 1: // UI Colors
             uiColorMenu();
             break;
         case 2: // Rotation
-            // Rotation handling code
+            orientationMenu();
             break;
         case 3: // Brightness
-            // Brightness handling code
+            staticItems();
+            tft.setTextDatum(MC_DATUM);
+            tft.drawString("Brightness settings", SCREEN_WIDTH/2, SCREEN_HEIGHT/2);
+            Serial.println("Brightness selected");
+            delay(1000);
             break;
         case 4: // Power
-            // Power handling code
+            staticItems();
+            tft.setTextDatum(MC_DATUM);
+            tft.drawString("Power settings", SCREEN_WIDTH/2, SCREEN_HEIGHT/2);
+            Serial.println("Power selected");
+            delay(1000);
             break;
         case 5: // Storage
-            // Storage handling code
+            staticItems();
+            tft.setTextDatum(MC_DATUM);
+            tft.drawString("Storage settings", SCREEN_WIDTH/2, SCREEN_HEIGHT/2);
+            Serial.println("Storage selected");
+            delay(1000);
             break;
         case 6: // Sound
             staticItems();
+            tft.setTextDatum(MC_DATUM);
             tft.drawString("Sound selected", SCREEN_WIDTH/2, SCREEN_HEIGHT / 2);
             Serial.println("Sound selected");
             delay(1000);

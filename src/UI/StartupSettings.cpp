@@ -86,6 +86,12 @@ void startUp() {
     }
     tft.begin();
     
+    // Set default rotation if no config file exists
+    if (!SPIFFS.exists("/user_config.json")) {
+        tft.setRotation(2);  // 180° rotation (adjust if needed)
+        Serial.println("Set default rotation to 180°");
+    }
+    
     displayStartupLogo();
     mainMenu();
 }

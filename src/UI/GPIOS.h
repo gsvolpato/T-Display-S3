@@ -33,6 +33,9 @@
 #define SS_PIN 21       // RC522 SDA (SS) pin
 #define IRQ_PIN 44      // RC522 IRQ pin
 
+//| TFT Touch (disabled)
+#define TOUCH_CS -1     // Touch screen chip select (disabled)
+
 extern bool rfidActive;
 extern bool nrfActive;
 void deinitRFID();
